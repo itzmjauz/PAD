@@ -3,11 +3,14 @@ package Processing;
 import java.util.Scanner;
 import java.io.PrintStream;
 import ui.UIAuxiliaryMethods;
+import ui.Event;
 
 public class Processing {
 	
 	PrintStream out;
 	Dataset data;
+	ClusterRow state;
+	Event event;
 	
 	Processing() {
 		out = new PrintStream(System.out);
@@ -15,20 +18,47 @@ public class Processing {
 	}
 	
 	void Start() {
+		DistanceMeasure distanceMeasure = askDistanceMeasure();
+		ClusterMethod method = askClusterMethod(distanceMeasure);
+		
 		data = getDataset();
+		ClusterRow cluster = new ClusterRow(data);
+		Clusterer clusterer = new Clusterer(cluster, method);
+		Cartesian view = new Cartesian();
 		
-		// we need to print the maximum value of the first variable.
-		double maximum = 0;
+		state = clusterer.cluster;
 		
-		for(int x = 0; x < data.elements ; x++) {
-			double value = data.getUnit(x).getNumber(0);
-			if(value > maximum) {
-				maximum = value;
-			}
+		while(state.size() >= data.clusters) {
+			view.draw(state);
+			state = clusterer.nextState();
 		}
+		while(true) {
+			view.processEvents();
+		}
+	}
+	
+	ClusterMethod askClusterMethod(DistanceMeasure distanceMeasure) {
+		String choice = UIAuxiliaryMethods.askUserForChoice("Choose your clustering method", "AverageLinkage", "CompleteLinkage", "SingleLinkage");
+
+		if(choice.equals("AverageLinkage")) {
+			return new AverageLinkage(distanceMeasure);
+		} else if(choice.equals("CompleteLinkage")) {
+			return new CompleteLinkage(distanceMeasure);
+		} else {
+			return new SingleLinkage(distanceMeasure);
+		}
+	}
+	
+	DistanceMeasure askDistanceMeasure() {
+		String choice = UIAuxiliaryMethods.askUserForChoice("Choose your distance method", "Euclidean", "Pearson", "Manhattan");
 		
-		System.out.println("The maximum value of the variable '" + data.variableNames[1] + "' is " + maximum);
-		
+		if(choice.equals("Euclidean")){
+			return new Euclidean();
+		} else if(choice.equals("Pearson")) {
+			return new Pearson();
+		} else {
+			return new Manhattan();
+		}
 	}
 	
 	Dataset getDataset() {
